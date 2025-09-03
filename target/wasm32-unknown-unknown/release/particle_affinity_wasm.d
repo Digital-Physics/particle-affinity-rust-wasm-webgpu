@@ -1,0 +1,1 @@
+/home/jdk/Documents/VSCodeProjects/particle-affinity-rust-wasm-webgpu/target/wasm32-unknown-unknown/release/particle_affinity_wasm.wasm: /home/jdk/Documents/VSCodeProjects/particle-affinity-rust-wasm-webgpu/src/lib.rs
