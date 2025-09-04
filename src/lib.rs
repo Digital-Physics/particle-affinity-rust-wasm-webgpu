@@ -356,3 +356,27 @@ impl ParticleGrid {
         count
     }
 }
+
+#[wasm_bindgen]
+impl ParticleGrid {
+    #[wasm_bindgen]
+    pub fn update_affinity(&mut self, new_affinity: Vec<i32>) {
+        if new_affinity.len() >= (self.num_types + 1) * (self.num_types + 1) {
+            let mut idx = 0;
+            for t in 0..=self.num_types {
+                for u in 0..=self.num_types {
+                    self.affinity[t][u] = new_affinity[idx] as i8;
+                    idx += 1;
+                }
+            }
+        }
+    }
+    
+    #[wasm_bindgen]
+    pub fn update_copy_replace(&mut self, copy_types: Vec<u8>, replace_types: Vec<u8>) {
+        if copy_types.len() > self.num_types && replace_types.len() > self.num_types {
+            self.copy_type = copy_types;
+            self.replace_type = replace_types;
+        }
+    }
+}

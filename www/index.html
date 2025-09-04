@@ -36,8 +36,10 @@
             backdrop-filter: blur(15px);
             padding: 20px;
             border-radius: 12px;
-            min-width: 280px;
-            max-width: 350px;
+            min-width: 320px;
+            max-width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.1);
             z-index: 100;
@@ -113,9 +115,9 @@
         }
 
         .matrix-cell {
-            width: 24px;
-            height: 24px;
-            border: 1px solid #555;
+            width: 28px;
+            height: 28px;
+            border: 2px solid #555;
             background: rgba(51, 51, 51, 0.8);
             cursor: pointer;
             display: flex;
@@ -123,13 +125,14 @@
             justify-content: center;
             font-size: 11px;
             font-weight: bold;
-            border-radius: 3px;
+            border-radius: 4px;
             transition: all 0.2s ease;
+            position: relative;
         }
 
         .matrix-cell:hover {
             border-color: #4CAF50;
-            transform: scale(1.1);
+            transform: scale(1.05);
         }
 
         .matrix-cell.positive {
@@ -170,6 +173,54 @@
             border-color: #4CAF50;
         }
 
+        .copy-replace-ui {
+            margin-top: 15px;
+        }
+
+        .particle-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            gap: 8px;
+            padding: 8px;
+            background: rgba(40, 40, 40, 0.6);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .particle-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .particle-type {
+            min-width: 24px;
+            font-weight: bold;
+            text-align: center;
+            color: white;
+        }
+
+        .particle-select {
+            flex: 1;
+            padding: 4px 8px;
+            border: 1px solid #555;
+            background: rgba(51, 51, 51, 0.9);
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .particle-select:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .color-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
         .header-title {
             text-align: center;
             margin-bottom: 15px;
@@ -181,6 +232,15 @@
             background-clip: text;
         }
 
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #fff;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 4px;
+        }
+
         @media (max-width: 768px) {
             .controls {
                 top: 10px;
@@ -188,6 +248,25 @@
                 left: 10px;
                 max-width: none;
             }
+        }
+
+        /* Scrollbar styling */
+        .controls::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .controls::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .controls::-webkit-scrollbar-thumb {
+            background: rgba(76, 175, 80, 0.7);
+            border-radius: 3px;
+        }
+
+        .controls::-webkit-scrollbar-thumb:hover {
+            background: rgba(76, 175, 80, 0.9);
         }
     </style>
 </head>
@@ -197,7 +276,7 @@
     <div class="controls">
         <div class="header-title">Particle Affinity Simulation</div>
 
-        <button id="restart">restart</button>
+        <button id="restart">Restart Simulation</button>
         
         <div class="control-group">
             <label for="grid-size">Grid Size:</label>
@@ -206,7 +285,7 @@
         
         <div class="control-group">
             <label for="num-types">Particle Types:</label>
-            <input type="number" id="num-types" value="6" min="2" max="12" onchange="updateAffinityMatrix()">
+            <input type="number" id="num-types" value="6" min="2" max="12" onchange="updateParticleTypes()">
         </div>
         
         <div class="control-group">
@@ -220,7 +299,10 @@
         </div>
         
         <div class="control-group">
-            <label>Affinity Matrix:</label>
+            <div class="section-title">Particle Affinity Matrix</div>
+            <div style="font-size: 11px; color: #aaa; margin-bottom: 8px;">
+                Colors match particle types. Click cells to toggle attraction (+), neutral (0), or repulsion (−).
+            </div>
             <div class="matrix-controls">
                 <button class="matrix-btn" onclick="randomizeMatrix()">Random</button>
                 <button class="matrix-btn" onclick="clearMatrix()">Clear</button>
@@ -230,79 +312,278 @@
                 <div id="affinity-grid" class="matrix-grid"></div>
             </div>
         </div>
+
+        <div class="control-group copy-replace-ui">
+            <div class="section-title">Copy & Replace Rules</div>
+            <div style="font-size: 11px; color: #aaa; margin-bottom: 8px;">
+                Each particle type can copy one type and replace another
+            </div>
+            <div id="copy-replace-container"></div>
+        </div>
     </div>
 
     <script type="module">
         import init, { ParticleGrid } from "./pkg/particle_affinity_wasm.js";
 
+        // Particle colors matching the shader
+        function getParticleColor(type) {
+            if (type === 0) return [0, 0, 0];
+            if (type === 1) return [255, 102, 102];
+            if (type === 2) return [102, 255, 102];
+            if (type === 3) return [102, 102, 255];
+            if (type === 4) return [255, 255, 102];
+            if (type === 5) return [255, 102, 255];
+            if (type === 6) return [102, 255, 255];
+            
+            // HSV to RGB for higher types
+            const hue = ((type - 1) % 12) / 12;
+            const s = 0.8;
+            const v = 1.0;
+            
+            const c = v * s;
+            const h_prime = hue * 6;
+            const x = c * (1 - Math.abs((h_prime % 2) - 1));
+            const m = v - c;
+            
+            let r, g, b;
+            if (h_prime < 1) [r, g, b] = [c, x, 0];
+            else if (h_prime < 2) [r, g, b] = [x, c, 0];
+            else if (h_prime < 3) [r, g, b] = [0, c, x];
+            else if (h_prime < 4) [r, g, b] = [0, x, c];
+            else if (h_prime < 5) [r, g, b] = [x, 0, c];
+            else [r, g, b] = [c, 0, x];
+            
+            return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+        }
+
+        function colorToHex(rgb) {
+            return `rgb(${Math.round(rgb[0])}, ${Math.round(rgb[1])}, ${Math.round(rgb[2])})`;
+        }
+
         let affinityMatrix = [];
+        let copyTypes = [];
+        let replaceTypes = [];
         let currentNumTypes = 6;
+        let grid = null;
 
         // Initialize affinity matrix with random values
         function initAffinityMatrix() {
             const numTypes = parseInt(document.getElementById("num-types").value);
             currentNumTypes = numTypes;
-            affinityMatrix = Array(numTypes * numTypes);
+            affinityMatrix = Array((numTypes + 1) * (numTypes + 1));
             
-            // Generate random affinity values
+            // Generate random affinity values including type 0
             for (let i = 0; i < affinityMatrix.length; i++) {
                 const rand = Math.random();
                 affinityMatrix[i] = rand < 0.33 ? -1 : rand < 0.66 ? 0 : 1;
             }
         }
 
-        function updateAffinityMatrix() {
+        function initCopyReplaceArrays() {
+            copyTypes = Array(currentNumTypes + 1).fill(1);
+            replaceTypes = Array(currentNumTypes + 1).fill(1);
+            
+            // Initialize with different values for each type
+            for (let i = 1; i <= currentNumTypes; i++) {
+                copyTypes[i] = (i % currentNumTypes) + 1;
+                replaceTypes[i] = ((i + 1) % currentNumTypes) + 1;
+                // Ensure replace type is different from copy type
+                if (replaceTypes[i] === copyTypes[i]) {
+                    replaceTypes[i] = (replaceTypes[i] % currentNumTypes) + 1;
+                }
+            }
+        }
+
+        function updateParticleTypes() {
             const numTypes = parseInt(document.getElementById("num-types").value);
             if (numTypes === currentNumTypes) return;
 
             const oldMatrix = [...affinityMatrix];
+            const oldCopy = [...copyTypes];
+            const oldReplace = [...replaceTypes];
             const oldSize = currentNumTypes;
             
             currentNumTypes = numTypes;
-            affinityMatrix = Array(numTypes * numTypes).fill(0);
             
-            // Copy over existing values where possible
-            for (let i = 0; i < Math.min(numTypes, oldSize); i++) {
-                for (let j = 0; j < Math.min(numTypes, oldSize); j++) {
-                    affinityMatrix[i * numTypes + j] = oldMatrix[i * oldSize + j];
+            // Update affinity matrix (including type 0)
+            affinityMatrix = Array((numTypes + 1) * (numTypes + 1)).fill(0);
+            for (let i = 0; i <= Math.min(numTypes, oldSize); i++) {
+                for (let j = 0; j <= Math.min(numTypes, oldSize); j++) {
+                    const oldIdx = i * (oldSize + 1) + j;
+                    const newIdx = i * (numTypes + 1) + j;
+                    affinityMatrix[newIdx] = oldMatrix[oldIdx] || 0;
                 }
             }
             
-            // Set diagonal to 1 for new types
-            for (let i = oldSize; i < numTypes; i++) {
-                affinityMatrix[i * numTypes + i] = 1;
+            // Update copy/replace arrays
+            copyTypes = Array(numTypes + 1).fill(1);
+            replaceTypes = Array(numTypes + 1).fill(1);
+            
+            for (let i = 1; i <= Math.min(numTypes, oldSize); i++) {
+                copyTypes[i] = oldCopy[i] && oldCopy[i] <= numTypes ? oldCopy[i] : 1;
+                replaceTypes[i] = oldReplace[i] && oldReplace[i] <= numTypes ? oldReplace[i] : 1;
+            }
+            
+            // Initialize new types
+            for (let i = oldSize + 1; i <= numTypes; i++) {
+                copyTypes[i] = (i % numTypes) + 1;
+                replaceTypes[i] = ((i + 1) % numTypes) + 1;
+                if (replaceTypes[i] === copyTypes[i]) {
+                    replaceTypes[i] = (replaceTypes[i] % numTypes) + 1;
+                }
             }
             
             renderAffinityMatrix();
+            renderCopyReplaceUI();
+            updateSimulationRules();
         }
 
         function renderAffinityMatrix() {
-            const grid = document.getElementById('affinity-grid');
+            const gridEl = document.getElementById('affinity-grid');
             const numTypes = currentNumTypes;
             
-            grid.style.gridTemplateColumns = `repeat(${numTypes}, 1fr)`;
-            grid.innerHTML = '';
+            gridEl.style.gridTemplateColumns = `repeat(${numTypes}, 1fr)`;
+            gridEl.innerHTML = '';
             
-            for (let i = 0; i < numTypes * numTypes; i++) {
-                const cell = document.createElement('div');
-                cell.className = 'matrix-cell';
-                cell.onclick = () => toggleCell(i);
-                updateCellDisplay(cell, affinityMatrix[i]);
-                grid.appendChild(cell);
+            // Only show matrix for types 1 to numTypes (skip type 0)
+            for (let i = 1; i <= numTypes; i++) {
+                for (let j = 1; j <= numTypes; j++) {
+                    const idx = i * (numTypes + 1) + j;  // Adjust for type 0 inclusion
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell';
+                    // cell.onclick = () => toggleAffinityCell(idx);
+                    cell.onclick = (() => {
+                        const r = i;
+                        const c = j;
+                        return () => toggleAffinityCell(r, c);
+                    })();
+                    
+                    // Add color border to indicate particle type
+                    const rowColor = getParticleColor(i);
+                    const colColor = getParticleColor(j);
+                    cell.style.borderLeft = `3px solid ${colorToHex(rowColor)}`;
+                    cell.style.borderTop = `3px solid ${colorToHex(colColor)}`;
+                    
+                    updateAffinityCellDisplay(cell, affinityMatrix[idx]);
+                    gridEl.appendChild(cell);
+                }
             }
         }
 
-        function updateCellDisplay(cell, value) {
+        function renderCopyReplaceUI() {
+            const container = document.getElementById('copy-replace-container');
+            container.innerHTML = '';
+            
+            for (let i = 1; i <= currentNumTypes; i++) {
+                const row = document.createElement('div');
+                row.className = 'particle-row';
+                
+                const color = getParticleColor(i);
+                const colorIndicator = document.createElement('div');
+                colorIndicator.className = 'color-indicator';
+                colorIndicator.style.backgroundColor = colorToHex(color);
+                
+                const typeLabel = document.createElement('div');
+                typeLabel.className = 'particle-type';
+                typeLabel.textContent = i;
+                
+                const copyLabel = document.createElement('span');
+                copyLabel.textContent = 'copies';
+                copyLabel.style.fontSize = '11px';
+                copyLabel.style.color = '#aaa';
+                
+                const copySelect = document.createElement('select');
+                copySelect.className = 'particle-select';
+                copySelect.onchange = () => updateCopyType(i, parseInt(copySelect.value));
+                
+                for (let j = 1; j <= currentNumTypes; j++) {
+                    if (j !== i) {
+                        const option = document.createElement('option');
+                        option.value = j;
+                        option.textContent = `Type ${j}`;
+                        if (j === copyTypes[i]) option.selected = true;
+                        copySelect.appendChild(option);
+                    }
+                }
+                
+                const replaceLabel = document.createElement('span');
+                replaceLabel.textContent = 'replaces';
+                replaceLabel.style.fontSize = '11px';
+                replaceLabel.style.color = '#aaa';
+                
+                const replaceSelect = document.createElement('select');
+                replaceSelect.className = 'particle-select';
+                replaceSelect.onchange = () => updateReplaceType(i, parseInt(replaceSelect.value));
+                
+                for (let j = 1; j <= currentNumTypes; j++) {
+                    if (j !== i && j !== copyTypes[i]) {
+                        const option = document.createElement('option');
+                        option.value = j;
+                        option.textContent = `Type ${j}`;
+                        if (j === replaceTypes[i]) option.selected = true;
+                        replaceSelect.appendChild(option);
+                    }
+                }
+                
+                row.appendChild(colorIndicator);
+                row.appendChild(typeLabel);
+                row.appendChild(copyLabel);
+                row.appendChild(copySelect);
+                row.appendChild(replaceLabel);
+                row.appendChild(replaceSelect);
+                
+                container.appendChild(row);
+            }
+        }
+
+        function updateAffinityCellDisplay(cell, value) {
             cell.textContent = value === 0 ? '0' : (value > 0 ? '+' : '−');
             cell.className = 'matrix-cell ' + (value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral');
         }
 
-        function toggleCell(index) {
-            let current = affinityMatrix[index];
-            affinityMatrix[index] = current === 1 ? 0 : current === 0 ? -1 : 1;
+        function toggleAffinityCell(row, col) {
+            const matrixIndex = row * (currentNumTypes + 1) + col;
+            console.log(`Toggling matrix[${matrixIndex}] (row ${row}, col ${col})`);
+            console.log(`Current value: ${affinityMatrix[matrixIndex]}`);
             
-            const cell = document.getElementById('affinity-grid').children[index];
-            updateCellDisplay(cell, affinityMatrix[index]);
+            let current = affinityMatrix[matrixIndex];
+            affinityMatrix[matrixIndex] = current === 1 ? 0 : current === 0 ? -1 : 1;
+            
+            console.log(`New value: ${affinityMatrix[matrixIndex]}`);
+            
+            // Update the visual cell by finding it in the grid
+            const gridEl = document.getElementById('affinity-grid');
+            const cells = gridEl.children;
+            const visualIndex = (row - 1) * currentNumTypes + (col - 1);
+            
+            if (cells[visualIndex]) {
+                updateAffinityCellDisplay(cells[visualIndex], affinityMatrix[matrixIndex]);
+                console.log(`Updated cell at visual index ${visualIndex}`);
+            } else {
+                console.error(`Could not find cell at visual index ${visualIndex}`);
+            }
+            
+            // Update simulation immediately
+            updateSimulationRules();
+        }
+
+        function updateCopyType(particleType, copyType) {
+            copyTypes[particleType] = copyType;
+            renderCopyReplaceUI(); // Re-render to update replace options
+            updateSimulationRules();
+        }
+
+        function updateReplaceType(particleType, replaceType) {
+            replaceTypes[particleType] = replaceType;
+            updateSimulationRules();
+        }
+
+        function updateSimulationRules() {
+            if (grid && typeof grid.update_affinity === 'function') {
+                grid.update_affinity(affinityMatrix);
+                grid.update_copy_replace(copyTypes, replaceTypes);
+                console.log("Updated simulation rules in real-time");
+            }
         }
 
         window.randomizeMatrix = function() {
@@ -310,22 +591,26 @@
                 affinityMatrix[i] = Math.random() < 0.33 ? -1 : Math.random() < 0.5 ? 0 : 1;
             }
             renderAffinityMatrix();
+            updateSimulationRules();
         }
 
         window.clearMatrix = function() {
             affinityMatrix.fill(0);
             renderAffinityMatrix();
+            updateSimulationRules();
         }
 
         window.identityMatrix = function() {
             affinityMatrix.fill(0);
-            for (let i = 0; i < currentNumTypes; i++) {
-                affinityMatrix[i * currentNumTypes + i] = 1;
+            for (let i = 1; i <= currentNumTypes; i++) {
+                const idx = i * (currentNumTypes + 1) + i;
+                affinityMatrix[idx] = 1;
             }
             renderAffinityMatrix();
+            updateSimulationRules();
         }
 
-        window.updateAffinityMatrix = updateAffinityMatrix;
+        window.updateParticleTypes = updateParticleTypes;
 
         async function initApp() {
             // Load wasm module
@@ -480,7 +765,6 @@
             }
 
             // GPU resources
-            let grid;
             let texture;
             let textureView;
 
@@ -493,11 +777,17 @@
 
                 console.log(`Creating grid: ${size}×${size}, ${types} types, density ${density}, radius ${radius}`);
 
-                // Use current affinity matrix or null for random
+                // Use current affinity matrix if it exists
                 const hasCustomAffinity = affinityMatrix.some(val => val !== 0);
                 const customAffinity = hasCustomAffinity ? affinityMatrix : null;
 
                 grid = new ParticleGrid(size, types, density, radius, customAffinity);
+                
+                // Apply copy/replace rules if they exist
+                if (copyTypes.length > 0 && replaceTypes.length > 0) {
+                    grid.update_copy_replace(copyTypes, replaceTypes);
+                }
+                
                 console.log("Grid created:", grid.debug_info());
 
                 // Allocate GPU texture
@@ -516,44 +806,49 @@
 
             document.getElementById("restart").onclick = restart;
 
-            // Initialize affinity matrix and render it
+            // Initialize UI components
             initAffinityMatrix();
+            initCopyReplaceArrays();
             renderAffinityMatrix();
+            renderCopyReplaceUI();
             
             // Initialize simulation
             restart();
 
             // Render loop
             function frame() {
-                grid.step();
+                if (grid) {
+                    grid.step();
 
-                const data = grid.export_grid();
+                    const data = grid.export_grid();
 
-                device.queue.writeTexture(
-                    { texture },
-                    data,
-                    { bytesPerRow: grid.size },
-                    [grid.size, grid.size]
-                );
+                    device.queue.writeTexture(
+                        { texture },
+                        data,
+                        { bytesPerRow: grid.size },
+                        [grid.size, grid.size]
+                    );
 
-                const encoder = device.createCommandEncoder();
-                const pass = encoder.beginRenderPass({
-                    colorAttachments: [
-                        {
-                            view: context.getCurrentTexture().createView(),
-                            loadOp: "clear",
-                            storeOp: "store",
-                            clearValue: { r: 0.02, g: 0.02, b: 0.02, a: 1 },
-                        },
-                    ],
-                });
+                    const encoder = device.createCommandEncoder();
+                    const pass = encoder.beginRenderPass({
+                        colorAttachments: [
+                            {
+                                view: context.getCurrentTexture().createView(),
+                                loadOp: "clear",
+                                storeOp: "store",
+                                clearValue: { r: 0.02, g: 0.02, b: 0.02, a: 1 },
+                            },
+                        ],
+                    });
 
-                pass.setPipeline(pipeline);
-                pass.setBindGroup(0, bindGroup);
-                pass.draw(6);
-                pass.end();
+                    pass.setPipeline(pipeline);
+                    pass.setBindGroup(0, bindGroup);
+                    pass.draw(6);
+                    pass.end();
 
-                device.queue.submit([encoder.finish()]);
+                    device.queue.submit([encoder.finish()]);
+                }
+                
                 requestAnimationFrame(frame);
             }
 
