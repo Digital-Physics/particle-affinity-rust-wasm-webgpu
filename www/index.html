@@ -199,19 +199,24 @@
             color: white;
         }
 
+        /* Updated dropdown styling */
         .particle-select {
             flex: 1;
-            padding: 4px 8px;
             border: 1px solid #555;
-            background: rgba(51, 51, 51, 0.9);
-            color: white;
             border-radius: 4px;
+            padding: 4px 8px;
             font-size: 12px;
+            cursor: pointer;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            transition: none;
         }
 
+        .particle-select:hover,
         .particle-select:focus {
+            filter: brightness(0.95);
             outline: none;
-            border-color: #4CAF50;
         }
 
         .color-indicator {
@@ -325,7 +330,6 @@
     <script type="module">
         import init, { ParticleGrid } from "./pkg/particle_affinity_wasm.js";
 
-        // Particle colors matching the shader
         function getParticleColor(type) {
             if (type === 0) return [0, 0, 0];
             if (type === 1) return [255, 102, 102];
@@ -334,17 +338,12 @@
             if (type === 4) return [255, 255, 102];
             if (type === 5) return [255, 102, 255];
             if (type === 6) return [102, 255, 255];
-            
-            // HSV to RGB for higher types
             const hue = ((type - 1) % 12) / 12;
-            const s = 0.8;
-            const v = 1.0;
-            
+            const s = 0.8, v = 1.0;
             const c = v * s;
             const h_prime = hue * 6;
             const x = c * (1 - Math.abs((h_prime % 2) - 1));
             const m = v - c;
-            
             let r, g, b;
             if (h_prime < 1) [r, g, b] = [c, x, 0];
             else if (h_prime < 2) [r, g, b] = [x, c, 0];
@@ -352,12 +351,18 @@
             else if (h_prime < 4) [r, g, b] = [0, x, c];
             else if (h_prime < 5) [r, g, b] = [x, 0, c];
             else [r, g, b] = [c, 0, x];
-            
             return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
         }
 
         function colorToHex(rgb) {
             return `rgb(${Math.round(rgb[0])}, ${Math.round(rgb[1])}, ${Math.round(rgb[2])})`;
+        }
+
+        function setSelectColor(selectEl) {
+            const [r, g, b] = getParticleColor(parseInt(selectEl.value));
+            selectEl.style.backgroundColor = colorToHex([r, g, b]);
+            const brightness = (r * 0.299 + g * 0.587 + b * 0.114);
+            selectEl.style.color = brightness > 150 ? 'black' : 'white';
         }
 
         let affinityMatrix = [];
@@ -366,7 +371,6 @@
         let currentNumTypes = 6;
         let grid = null;
 
-        // Initialize affinity matrix with random values
         function initAffinityMatrix() {
             const numTypes = parseInt(document.getElementById("num-types").value);
             currentNumTypes = numTypes;
@@ -473,68 +477,88 @@
         function renderCopyReplaceUI() {
             const container = document.getElementById('copy-replace-container');
             container.innerHTML = '';
-            
             for (let i = 1; i <= currentNumTypes; i++) {
                 const row = document.createElement('div');
                 row.className = 'particle-row';
-                
-                const color = getParticleColor(i);
+
                 const colorIndicator = document.createElement('div');
                 colorIndicator.className = 'color-indicator';
-                colorIndicator.style.backgroundColor = colorToHex(color);
-                
+                colorIndicator.style.backgroundColor = colorToHex(getParticleColor(i));
+
                 const typeLabel = document.createElement('div');
                 typeLabel.className = 'particle-type';
                 typeLabel.textContent = i;
-                
+
                 const copyLabel = document.createElement('span');
                 copyLabel.textContent = 'copies';
                 copyLabel.style.fontSize = '11px';
                 copyLabel.style.color = '#aaa';
-                
+
                 const copySelect = document.createElement('select');
                 copySelect.className = 'particle-select';
-                copySelect.onchange = () => updateCopyType(i, parseInt(copySelect.value));
-                
+                copySelect.onchange = () => {
+                    updateCopyType(i, parseInt(copySelect.value));
+                    setSelectColor(copySelect);
+                    renderCopyReplaceUI();
+                };
                 for (let j = 1; j <= currentNumTypes; j++) {
                     if (j !== i) {
                         const option = document.createElement('option');
                         option.value = j;
                         option.textContent = `Type ${j}`;
                         if (j === copyTypes[i]) option.selected = true;
+
+                        // 🎨 set dropdown option background + text color
+                        const [r, g, b] = getParticleColor(j);
+                        option.style.backgroundColor = colorToHex([r, g, b]);
+                        const brightness = (r * 0.299 + g * 0.587 + b * 0.114);
+                        option.style.color = brightness > 150 ? 'black' : 'white';
+
                         copySelect.appendChild(option);
                     }
                 }
-                
+                setSelectColor(copySelect);
+
                 const replaceLabel = document.createElement('span');
                 replaceLabel.textContent = 'replaces';
                 replaceLabel.style.fontSize = '11px';
                 replaceLabel.style.color = '#aaa';
-                
+
                 const replaceSelect = document.createElement('select');
                 replaceSelect.className = 'particle-select';
-                replaceSelect.onchange = () => updateReplaceType(i, parseInt(replaceSelect.value));
-                
+                replaceSelect.onchange = () => {
+                    updateReplaceType(i, parseInt(replaceSelect.value));
+                    setSelectColor(replaceSelect);
+                };
                 for (let j = 1; j <= currentNumTypes; j++) {
                     if (j !== i && j !== copyTypes[i]) {
                         const option = document.createElement('option');
                         option.value = j;
                         option.textContent = `Type ${j}`;
                         if (j === replaceTypes[i]) option.selected = true;
+
+                        // 🎨 set dropdown option background + text color
+                        const [r, g, b] = getParticleColor(j);
+                        option.style.backgroundColor = colorToHex([r, g, b]);
+                        const brightness = (r * 0.299 + g * 0.587 + b * 0.114);
+                        option.style.color = brightness > 150 ? 'black' : 'white';
+
                         replaceSelect.appendChild(option);
                     }
                 }
-                
+                setSelectColor(replaceSelect);
+
                 row.appendChild(colorIndicator);
                 row.appendChild(typeLabel);
                 row.appendChild(copyLabel);
                 row.appendChild(copySelect);
                 row.appendChild(replaceLabel);
                 row.appendChild(replaceSelect);
-                
+
                 container.appendChild(row);
             }
         }
+
 
         function updateAffinityCellDisplay(cell, value) {
             cell.textContent = value === 0 ? '0' : (value > 0 ? '+' : '−');
@@ -866,6 +890,7 @@
         });
 
         initApp().catch(console.error);
+
     </script>
 </body>
 </html>
