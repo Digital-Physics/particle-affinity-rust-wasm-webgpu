@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 use rand::prelude::*;
-use std::fmt;
+// use std::fmt;
 
 // Import console.log for debugging
 #[wasm_bindgen]
@@ -24,7 +24,7 @@ pub struct ParticleGrid {
     affinity: Vec<Vec<i8>>,
     copy_type: Vec<u8>,
     replace_type: Vec<u8>,
-    colors: Vec<[f32; 3]>,
+    // colors: Vec<[f32; 3]>,
     rng: ThreadRng,
 }
 
@@ -98,11 +98,11 @@ impl ParticleGrid {
         }
 
         // Initialize color palette
-        let mut colors = vec![[0.1, 0.1, 0.1]; num_types + 1];
-        for t in 1..=num_types {
-            let h = (t as f32 - 1.0) / (num_types as f32);
-            colors[t] = Self::hsv_to_rgb(h, 0.8, 1.0);
-        }
+        // let mut colors = vec![[0.1, 0.1, 0.1]; num_types + 1];
+        // for t in 1..=num_types {
+        //     let h = (t as f32 - 1.0) / (num_types as f32);
+        //     // colors[t] = Self::hsv_to_rgb(h, 0.8, 1.0);
+        // }
 
         console_log!("ParticleGrid initialized successfully");
 
@@ -115,7 +115,7 @@ impl ParticleGrid {
             affinity,
             copy_type,
             replace_type,
-            colors,
+            // colors,
             rng,
         }
     }
@@ -128,28 +128,28 @@ impl ParticleGrid {
         }
     }
 
-    fn hsv_to_rgb(h: f32, s: f32, v: f32) -> [f32; 3] {
-        let h6 = (h * 6.0).fract();
-        let i = (h * 6.0).floor() as i32 % 6;
-        let f = h6;
-        let p = v * (1.0 - s);
-        let q = v * (1.0 - f * s);
-        let t = v * (1.0 - (1.0 - f) * s);
+    // fn hsv_to_rgb(h: f32, s: f32, v: f32) -> [f32; 3] {
+    //     let h6 = (h * 6.0).fract();
+    //     let i = (h * 6.0).floor() as i32 % 6;
+    //     let f = h6;
+    //     let p = v * (1.0 - s);
+    //     let q = v * (1.0 - f * s);
+    //     let t = v * (1.0 - (1.0 - f) * s);
         
-        match i {
-            0 => [v, t, p],
-            1 => [q, v, p],
-            2 => [p, v, t],
-            3 => [p, q, v],
-            4 => [t, p, v],
-            _ => [v, p, q],
-        }
-    }
+    //     match i {
+    //         0 => [v, t, p],
+    //         1 => [q, v, p],
+    //         2 => [p, v, t],
+    //         3 => [p, q, v],
+    //         4 => [t, p, v],
+    //         _ => [v, p, q],
+    //     }
+    // }
 
-    #[inline]
-    fn inside(&self, x: isize, y: isize) -> bool {
-        x >= 0 && y >= 0 && (x as usize) < self.size && (y as usize) < self.size
-    }
+    // #[inline]
+    // fn inside(&self, x: isize, y: isize) -> bool {
+    //     x >= 0 && y >= 0 && (x as usize) < self.size && (y as usize) < self.size
+    // }
 
     fn try_replace_particle(&mut self, x: usize, y: usize) {
         let p_type = self.type_grid[x][y];
